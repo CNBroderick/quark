@@ -4,17 +4,22 @@ import com.google.gson.*;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class GsonJsonObjectUtil implements Supplier<JsonObject> {
 
     private final JsonObject jsonObject;
 
     public GsonJsonObjectUtil(String json) {
-        this.jsonObject = json == null ? new JsonObject() : new Gson().fromJson(json, JsonObject.class);
+        this.jsonObject = json == null ? new JsonObject() : createGsonBuilder().create().fromJson(json, JsonObject.class);
     }
 
     public GsonJsonObjectUtil(JsonObject jsonObject) {
@@ -22,7 +27,7 @@ public class GsonJsonObjectUtil implements Supplier<JsonObject> {
     }
 
     public GsonJsonObjectUtil(Object object) {
-        this(new Gson().toJson(object));
+        this(createGsonBuilder().create().toJson(object));
     }
 
     public static List<GsonJsonObjectUtil> fromArray(JsonArray array) {
@@ -31,6 +36,31 @@ public class GsonJsonObjectUtil implements Supplier<JsonObject> {
             if (element.isJsonObject()) jsonObjectUtils.add(new GsonJsonObjectUtil(element.getAsJsonObject()));
         }
         return jsonObjectUtils;
+    }
+
+    public static GsonBuilder createGsonBuilder() {
+        return new GsonBuilder()
+                .registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) -> new JsonPrimitive(src.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))))
+                .registerTypeAdapter(LocalDate.class, (JsonSerializer<LocalDate>) (src, typeOfSrc, context) -> new JsonPrimitive(src.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))))
+                .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json, type, jsonDeserializationContext) -> {
+                    String datetime = json.getAsJsonPrimitive().getAsString();
+                    return LocalDateTime.parse(datetime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                }).registerTypeAdapter(LocalDate.class, (JsonDeserializer<LocalDate>) (json, type, jsonDeserializationContext) -> {
+                    String datetime = json.getAsJsonPrimitive().getAsString();
+                    return LocalDate.parse(datetime, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                });
+    }
+
+    public static Optional<GsonJsonObjectUtil> createOptional(String json) {
+        try {
+            return Optional.ofNullable(createGsonBuilder().create().fromJson(json, JsonObject.class)).map(GsonJsonObjectUtil::new);
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    public static GsonJsonObjectUtil create(String json) throws JsonSyntaxException {
+        return new GsonJsonObjectUtil(createGsonBuilder().create().fromJson(json, JsonObject.class));
     }
 
     public boolean getAsBoolean(String name) {
@@ -184,11 +214,21 @@ public class GsonJsonObjectUtil implements Supplier<JsonObject> {
     }
 
     public String pretty() {
-        return new GsonBuilder().setPrettyPrinting().create().toJson(jsonObject);
+        return createGsonBuilder().setPrettyPrinting().create().toJson(jsonObject);
+    }
+
+    public Map<String, String> toMap() {
+        return jsonObject.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
+                e -> Optional.ofNullable(e.getValue()).map(JsonElement::toString).orElse("")));
     }
 
     @Override
     public JsonObject get() {
         return jsonObject;
+    }
+
+    @Override
+    public String toString() {
+        return pretty();
     }
 }

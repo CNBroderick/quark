@@ -9,6 +9,15 @@ import java.util.stream.Collectors;
 
 public interface HasEntitiesParameter<T> {
 
+    default List<T> getEntityList(OperationContext operationContext, String entityName) {
+        return new ArrayList<>(getEntities(operationContext, entityName));
+    }
+
+    default List<T> getEntityList(OperationContext operationContext, String entityName, String entitiesName) {
+        return new ArrayList<>(getEntities(operationContext, entityName, entitiesName));
+
+    }
+
     default Collection<T> getEntities(OperationContext operationContext, String entityName) {
         return getEntities(operationContext, entityName, InflectWord.getInstance().pluralize(entityName));
     }

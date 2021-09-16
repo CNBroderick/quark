@@ -1,6 +1,7 @@
 package org.bklab.quark.util.search.common;
 
 import dataq.core.data.schema.Record;
+import org.bklab.quark.util.time.LocalDateTimeFormatter;
 import org.bklab.quark.util.time.LocalDateTools;
 
 import java.lang.annotation.Retention;
@@ -8,11 +9,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @SuppressWarnings("Duplicates")
 public class KeyWordSearcher<T> implements BiFunction<String, Collection<T>, Collection<T>>, Predicate<String> {
@@ -28,7 +31,8 @@ public class KeyWordSearcher<T> implements BiFunction<String, Collection<T>, Col
     }
 
     public boolean matchJava5(String keyword) {
-        if (keyword == null || entity == null) return true;
+        if (keyword == null && entity == null) return true;
+        if (keyword == null || entity == null) return false;
         for (Field field : entity.getClass().getDeclaredFields()) {
             field.setAccessible(true);
             try {
@@ -41,11 +45,25 @@ public class KeyWordSearcher<T> implements BiFunction<String, Collection<T>, Col
         return false;
     }
 
+    public boolean matchSpaceConditions(String keyword) {
+        return keyword == null || matchConditions(keyword.replaceAll(" +", " ").split(" "));
+    }
+
+    public boolean matchConditions(String... keywords) {
+        return keywords == null || Stream.of(keywords).filter(Objects::nonNull).map(String::strip).filter(a -> !a.isBlank()).allMatch(this::match);
+    }
+
     /**
      * 二级深度搜索
      */
     public boolean match(String keyword) {
-        if (keyword == null || entity == null) return true;
+        if (keyword == null && entity == null) return true;
+        if (keyword == null || entity == null) return false;
+        if (entity instanceof String) return ((String) entity).contains(keyword);
+        if (entity instanceof Number) return ("" + entity).contains(keyword);
+        if (entity instanceof LocalDate) return (LocalDateTimeFormatter.Short((LocalDate) entity)).contains(keyword);
+        if (entity instanceof LocalTime) return (LocalDateTimeFormatter.Short((LocalTime) entity)).contains(keyword);
+        if (entity instanceof LocalDateTime) return (LocalDateTimeFormatter.Short((LocalDateTime) entity)).contains(keyword);
         if (entity instanceof Record) return matchKeyword((Record) entity, keyword);
         return Arrays.stream(entity.getClass().getDeclaredFields())
                 .peek(field -> field.setAccessible(true))

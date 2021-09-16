@@ -4,11 +4,13 @@ import dataq.core.operation.OperationResult;
 import org.bklab.quark.entity.dao.IEntityRowMapper;
 import org.bklab.quark.entity.dao.PreparedStatementHelper;
 import org.bklab.quark.operation.core.HasQueryEntities;
+import org.bklab.quark.operation.core.HasWhereCondition;
+import org.bklab.quark.operation.jdbc.builder.sql.SqlWhereConditionBuilder;
 
 import java.sql.Connection;
 import java.util.List;
 
-public abstract class JdbcEntityQueryOperation<T, E extends JdbcEntityQueryOperation<T, E>> extends JdbcCoreOperation<E> implements HasQueryEntities<T> {
+public abstract class JdbcEntityQueryOperation<T, E extends JdbcEntityQueryOperation<T, E>> extends JdbcCoreOperation<E> implements HasQueryEntities<T>, HasWhereCondition {
 
     private IEntityRowMapper<T> rowMapper;
 
@@ -37,4 +39,11 @@ public abstract class JdbcEntityQueryOperation<T, E extends JdbcEntityQueryOpera
         return new PreparedStatementHelper(connection, sql).executeQuery(parameters).asList(rowMapper);
     }
 
+    @Override
+    public List<String> createWhereConditions(List<String> conditions) {
+        initWhereCondition(new SqlWhereConditionBuilder(conditions, getContext()));
+        return conditions;
+    }
+
+    protected abstract void initWhereCondition(SqlWhereConditionBuilder builder);
 }

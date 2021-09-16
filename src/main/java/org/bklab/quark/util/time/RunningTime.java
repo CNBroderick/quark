@@ -11,6 +11,9 @@
 
 package org.bklab.quark.util.time;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
 public class RunningTime {
 
     private static final long ONE_DAY = 86400000;
@@ -19,12 +22,27 @@ public class RunningTime {
     private static final long ONE_SECOND = 1000;
     private long t0;
 
+    private boolean minSecondUnit = false;
+
     public RunningTime() {
         this.t0 = System.currentTimeMillis();
     }
 
+    public RunningTime(long startTime) {
+        this.t0 = startTime;
+    }
+
+    public RunningTime(LocalDateTime startTime) {
+        this.t0 = startTime.toInstant(ZoneOffset.ofHours(8)).toEpochMilli();
+    }
+
     public RunningTime reset() {
         this.t0 = System.currentTimeMillis();
+        return this;
+    }
+
+    public RunningTime minSecondUnit() {
+        this.minSecondUnit = true;
         return this;
     }
 
@@ -50,6 +68,7 @@ public class RunningTime {
 
     public String time() {
         long millis = getMillis();
+
         StringBuilder b = new StringBuilder();
 
         if (millis > ONE_DAY) {
@@ -71,6 +90,8 @@ public class RunningTime {
             b.append(millis / ONE_SECOND).append("秒 ");
             millis = millis % ONE_SECOND;
         }
+
+        if (minSecondUnit) return b.toString();
 
         b.append(millis);
         return b.append("毫秒").toString();

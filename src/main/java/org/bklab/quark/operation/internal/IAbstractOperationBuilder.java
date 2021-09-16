@@ -45,8 +45,7 @@ public interface IAbstractOperationBuilder<E extends IAbstractOperationBuilder<E
     private StackTraceElement findCallingClass(StackTraceElement[] stackTraceElements, int position) {
         if (position < 0 || stackTraceElements.length <= position) return null;
         StackTraceElement stackTraceElement = stackTraceElements[position];
-        System.out.println(stackTraceElement.getClassName() + "." + stackTraceElement.getMethodName() + "#" + stackTraceElement.getLineNumber());
-        return !getClass().isAssignableFrom(stackTraceElement.getClass())
+        return !stackTraceElement.getClass().isAssignableFrom(getClass())
                ? stackTraceElement : findCallingClass(stackTraceElements, position + 1);
     }
 
@@ -168,8 +167,12 @@ public interface IAbstractOperationBuilder<E extends IAbstractOperationBuilder<E
         return createAndExecute(abstractOperation).map(OperationResult::isSuccess).orElse(false);
     }
 
-    private Optional<OperationResult> createAndExecute(HasAbstractOperation abstractOperation) {
-        return execute(create(abstractOperation));
+    private Optional<OperationResult> createAndExecute(HasAbstractOperation hasAbstractOperation) {
+        AbstractOperation operation = create0(hasAbstractOperation);
+        beforeExecuteOperation(hasAbstractOperation, operation);
+        Optional<OperationResult> operationResult = execute(operation);
+        afterExecuteOperation(hasAbstractOperation, operation);
+        return operationResult;
     }
 
     private Optional<OperationResult> execute(AbstractOperation abstractOperation) {
@@ -183,7 +186,21 @@ public interface IAbstractOperationBuilder<E extends IAbstractOperationBuilder<E
         return Optional.empty();
     }
 
-    default AbstractOperation create(HasAbstractOperation abstractOperation) {
+    default void beforeExecuteOperation(HasAbstractOperation hasAbstractOperation, AbstractOperation abstractOperation) {
+
+    }
+
+    default void afterExecuteOperation(HasAbstractOperation hasAbstractOperation, AbstractOperation abstractOperation) {
+
+    }
+
+    default AbstractOperation create(HasAbstractOperation hasAbstractOperation) {
+        AbstractOperation operation = create0(hasAbstractOperation);
+        beforeExecuteOperation(hasAbstractOperation, operation);
+        return operation;
+    }
+
+    private AbstractOperation create0(HasAbstractOperation abstractOperation) {
         return abstractOperation.createAbstractOperation(addCallingClass().getParameterMap());
     }
 

@@ -1,5 +1,6 @@
 package org.bklab.quark.entity.dao;
 
+import com.alibaba.druid.proxy.jdbc.PreparedStatementProxyImpl;
 import com.google.gson.GsonBuilder;
 import org.bklab.quark.element.HasPreparedStatement;
 import org.slf4j.Logger;
@@ -64,7 +65,7 @@ public class PreparedStatementHelper {
             return a;
         } catch (SQLException e) {
             e.printStackTrace();
-            logger.error("执行更新失败\n" + statement + "\n" + new GsonBuilder().setPrettyPrinting().create().toJson(parameters) + "\n", e);
+            logger.error("执行更新失败\n" + getSql(statement) + "\n" + new GsonBuilder().setPrettyPrinting().create().toJson(parameters) + "\n", e);
             throw e;
         } finally {
             if (closeAfterExecute) close();
@@ -76,9 +77,16 @@ public class PreparedStatementHelper {
             insertParameters(parameters);
             return new ResultSetHelper(statement.executeQuery());
         } catch (SQLException e) {
-            logger.error("执行查询失败\n" + statement + "\n" + new GsonBuilder().setPrettyPrinting().create().toJson(parameters) + "\n", e);
+            logger.error("执行查询失败\n" + getSql(statement) + "\n" + new GsonBuilder().setPrettyPrinting().create().toJson(parameters) + "\n", e);
             throw e;
         }
+    }
+
+    private String getSql(PreparedStatement statement) {
+        if (statement instanceof PreparedStatementProxyImpl) {
+            return ((PreparedStatementProxyImpl) statement).getSql();
+        }
+        return statement.toString();
     }
 
     public PreparedStatementHelper addBatch(Object... parameters) throws SQLException {
@@ -104,7 +112,7 @@ public class PreparedStatementHelper {
         try {
             new ResultSetHelper(statement.getGeneratedKeys()).setEntityGeneratedKeys(entities, idSetter);
         } catch (Exception e) {
-            LoggerFactory.getLogger(getClass()).error("设置自增ID失败。" + statement);
+            LoggerFactory.getLogger(getClass()).error("设置自增ID失败。" + getSql(statement));
         }
         return entities;
     }
@@ -120,7 +128,7 @@ public class PreparedStatementHelper {
             return a;
         } catch (SQLException e) {
             e.printStackTrace();
-            logger.error("执行批量更新失败\n" + statement + "\n", e);
+            logger.error("执行批量更新失败\n" + getSql(statement) + "\n", e);
             throw e;
         } finally {
             if (closeAfterExecute) close();
