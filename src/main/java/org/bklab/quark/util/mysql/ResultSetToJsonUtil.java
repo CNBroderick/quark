@@ -47,35 +47,39 @@ public class ResultSetToJsonUtil {
 
     private Optional<JsonElement> fieldToJsonElement(final ResultSet resultSet, final ResultSetMetaData metaData, final int column) throws SQLException {
         final int columnType = metaData.getColumnType(column);
-        final Optional<JsonElement> jsonElement;
-        switch (columnType) {
-            case Types.BIT:
-            case Types.TINYINT:
-            case Types.SMALLINT:
-            case Types.INTEGER:
-            case Types.BIGINT:
-            case Types.FLOAT:
-            case Types.REAL:
-            case Types.DOUBLE:
-            case Types.DECIMAL:
-            case Types.NUMERIC:
-                jsonElement = Optional.ofNullable((Number) resultSet.getObject(column)).map(JsonPrimitive::new);
-                break;
-            case Types.CHAR:
-                throw new UnsupportedOperationException("TODO: " + JDBCType.valueOf(columnType));
-            case Types.BLOB: {
-                jsonElement = Optional.ofNullable(resultSet.getBlob(column)).map(this::convertInputStream).map(JsonPrimitive::new);
-                break;
+        try {
+            final Optional<JsonElement> jsonElement;
+            switch (columnType) {
+                case Types.TINYINT:
+                case Types.BIT:
+                case Types.SMALLINT:
+                case Types.INTEGER:
+                case Types.BIGINT:
+                case Types.FLOAT:
+                case Types.REAL:
+                case Types.DOUBLE:
+                case Types.DECIMAL:
+                case Types.NUMERIC:
+                    jsonElement = Optional.ofNullable((Number) resultSet.getObject(column)).map(JsonPrimitive::new);
+                    break;
+                case Types.CHAR:
+                    throw new UnsupportedOperationException("TODO: " + JDBCType.valueOf(columnType));
+                case Types.BLOB: {
+                    jsonElement = Optional.ofNullable(resultSet.getBlob(column)).map(this::convertInputStream).map(JsonPrimitive::new);
+                    break;
+                }
+                case Types.NCLOB:
+                case Types.CLOB: {
+                    jsonElement = Optional.ofNullable(resultSet.getClob(column)).map(this::convertInputStream).map(JsonPrimitive::new);
+                    break;
+                }
+                default:
+                    jsonElement = Optional.ofNullable(resultSet.getString(column)).map(JsonPrimitive::new);
             }
-            case Types.NCLOB:
-            case Types.CLOB: {
-                jsonElement = Optional.ofNullable(resultSet.getClob(column)).map(this::convertInputStream).map(JsonPrimitive::new);
-                break;
-            }
-            default:
-                jsonElement = Optional.ofNullable(resultSet.getString(column)).map(JsonPrimitive::new);
+            return jsonElement;
+        } catch (Exception e) {
+            return Optional.ofNullable(resultSet.getString(column)).map(JsonPrimitive::new);
         }
-        return jsonElement;
     }
 
     private String convertInputStream(Clob blob) {
